@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0c10" />
+<title>Le Souffleur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --stage:#0b0c10; --stage-2:#121319; --stage-3:#1a1c24;
+    --ink:#e9e6df; --ink-dim:#7e8190; --ink-faint:#565a68;
+    --spot:#f0a82e; --spot-soft:#f0a82e33;
+    --line:#272a34; --danger:#c65a52;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --radius:14px;
+  }
+  :root[data-theme="light"]{
+    --stage:#f4f1e9;        /* papier */
+    --stage-2:#fffdf8;      /* panneaux / cartes */
+    --stage-3:#ece8dd;      /* champs */
+    --ink:#23252c;          /* texte principal */
+    --ink-dim:#6b6f7b;      /* repliques d'attente */
+    --ink-faint:#9a9caa;    /* meta, labels */
+    --spot:#bf7a10;         /* projecteur (assombri pour le contraste) */
+    --spot-soft:#bf7a1022;
+    --line:#ddd7c9;         /* separateurs */
+    --danger:#b23b32;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:var(--stage);color:var(--ink);font-family:var(--sans);font-size:17px;
+    line-height:1.5;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;
+    transition:background-color .2s ease,color .2s ease}
+  #app{max-width:640px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+
+  .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    background:linear-gradient(var(--stage), var(--stage) 70%, transparent);backdrop-filter:blur(4px)}
+  .topbar h1{font-family:var(--serif);font-weight:600;font-size:20px;letter-spacing:.2px;margin:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+  .iconbtn{appearance:none;border:1px solid var(--line);background:var(--stage-2);color:var(--ink);
+    width:42px;height:42px;border-radius:50%;font-size:19px;display:grid;place-items:center;cursor:pointer;flex:none}
+  .iconbtn:active{transform:scale(.94)}
+
+  .view{flex:1;padding:4px 16px calc(env(safe-area-inset-bottom) + 28px);display:none}
+  .view.active{display:block}
+
+  .eyebrow{font-family:var(--sans);text-transform:uppercase;letter-spacing:.18em;
+    font-size:11px;color:var(--ink-faint);margin:18px 2px 10px}
+  .card{background:var(--stage-2);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;cursor:pointer}
+  .card:active{border-color:var(--spot)}
+  .card .meta{flex:1;min-width:0}
+  .card .title{font-family:var(--serif);font-size:18px;font-weight:600;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .sub{font-size:13px;color:var(--ink-faint);margin-top:3px}
+  .card .sub .role{color:var(--spot)}
+  .card .chev{color:var(--ink-faint);font-size:22px;flex:none}
+  .card-actions{display:flex;gap:6px;flex:none}
+  .ghostbtn{appearance:none;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+    border-radius:10px;padding:8px 10px;font-size:13px;cursor:pointer}
+  .ghostbtn:active{transform:scale(.95)}
+  .ghostbtn.danger{color:var(--danger);border-color:#3a2422}
+
+  .empty{text-align:center;color:var(--ink-faint);padding:64px 24px;font-size:15px}
+  .empty .big{font-family:var(--serif);font-size:22px;color:var(--ink-dim);display:block;margin-bottom:8px}
+
+  .primary{appearance:none;border:none;cursor:pointer;width:100%;background:var(--spot);color:#1a1305;
+    font-weight:600;font-size:16px;padding:15px;border-radius:var(--radius);margin-top:8px;
+    font-family:var(--sans);letter-spacing:.2px}
+  .primary:active{transform:scale(.99);filter:brightness(1.05)}
+  .primary.block{margin-top:18px}
+  .backup-row{display:flex;align-items:center;justify-content:center;gap:8px;
+    margin-top:22px;font-size:13px;color:var(--ink-faint)}
+  .backup-row button{appearance:none;background:transparent;border:none;cursor:pointer;
+    color:var(--spot);font-family:var(--sans);font-size:13px;padding:6px 4px;text-decoration:underline}
+  .backup-row .dot{color:var(--ink-faint)}
+
+  label.field{display:block;font-size:13px;color:var(--ink-faint);text-transform:uppercase;
+    letter-spacing:.1em;margin:18px 2px 8px}
+  input.text,textarea.text{width:100%;background:var(--stage-3);border:1px solid var(--line);color:var(--ink);
+    border-radius:var(--radius);padding:14px;font-family:var(--sans);font-size:16px;line-height:1.55;resize:vertical}
+  input.text:focus,textarea.text:focus{outline:none;border-color:var(--spot)}
+  textarea.text{min-height:30vh}
+  .hint{background:var(--stage-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    font-size:13.5px;color:var(--ink-dim);margin-top:10px;line-height:1.55}
+  .hint code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#000;color:var(--ink);
+    padding:1px 5px;border-radius:5px;font-size:12.5px}
+  .hint b{color:var(--ink)}
+  .preview{background:var(--stage-2);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;margin-top:8px;font-size:17px;line-height:1.5}
+  .preview .speaker{color:var(--spot);margin-top:14px}
+  .preview .speaker:first-child{margin-top:0}
+  .preview .line{color:var(--ink)}
+  .preview .spacer{height:12px}
+  .preview-empty{color:var(--ink-faint);font-style:italic}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .chip{font-size:12px;color:var(--spot);border:1px solid var(--spot);border-radius:999px;
+    padding:3px 11px;font-family:var(--sans);letter-spacing:.02em}
+  .chip.muted{color:var(--ink-faint);border-color:var(--line)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:6px 2px 0;font-size:12px;color:var(--ink-faint)}
+  .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;
+    margin-right:6px;vertical-align:middle}
+  .legend .l-char::before{background:var(--spot)}
+  .legend .l-dida::before{background:transparent;border:1px solid var(--ink-faint)}
+  .legend .l-line::before{background:var(--ink)}
+
+  .lead{font-family:var(--serif);font-size:24px;font-weight:600;margin:24px 2px 6px}
+  .lead-sub{color:var(--ink-faint);font-size:14px;margin:0 2px 18px}
+  .roles{display:flex;flex-direction:column;gap:10px}
+  .role-pick{appearance:none;text-align:left;cursor:pointer;background:var(--stage-2);border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px;color:var(--ink);font-family:var(--serif);font-size:18px;font-weight:500;
+    display:flex;align-items:center;justify-content:space-between}
+  .role-pick:active{border-color:var(--spot)}
+  .role-pick .count{font-family:var(--sans);font-size:12px;color:var(--ink-faint);font-weight:400}
+  .role-pick.selected{border-color:var(--spot);box-shadow:0 0 0 1px var(--spot) inset}
+  .role-pick.selected .count{color:var(--spot)}
+
+  .script{padding:8px 2px 150px;font-size:19px}
+  .spacer{height:18px}
+  .heading{font-family:var(--serif);text-align:center;color:var(--ink-dim);letter-spacing:.12em;
+    font-size:15px;margin:22px 0 12px;text-transform:uppercase}
+  .speaker{font-family:var(--serif);font-weight:600;letter-spacing:.06em;color:var(--ink-dim);
+    font-size:14px;text-transform:uppercase;margin:18px 0 4px}
+  .speaker.me{color:var(--spot)}
+  .didascalie{font-style:italic;color:var(--ink-faint);font-size:16px;margin:2px 0}
+  .line{margin:0 0 2px}
+  .line.cue{color:var(--ink-dim)}
+  .line.mine{color:var(--ink)}
+  .inline-dida{font-style:italic;color:var(--ink-faint)}
+
+  .blank{display:inline-block;vertical-align:baseline;cursor:pointer;border-bottom:2px solid var(--spot);
+    min-width:1.4ch;height:1.15em;margin:0 1px;border-radius:1px;transform:translateY(.18em)}
+  .blank:active{background:var(--spot-soft)}
+  .blank:focus-visible{outline:2px solid var(--spot);outline-offset:3px}
+  .lit{color:var(--spot);animation:lightUp .28s ease both}
+  @keyframes lightUp{from{opacity:.15;filter:blur(1px)}to{opacity:1;filter:none}}
+
+  .console{position:fixed;left:0;right:0;bottom:0;z-index:20;
+    background:linear-gradient(transparent, var(--stage-2) 24%, var(--stage-2));
+    border-top:1px solid var(--line);padding:14px 16px calc(env(safe-area-inset-bottom) + 14px)}
+  .console .inner{max-width:640px;margin:0 auto}
+  .slider-row{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+  .slider-row label{font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.14em;flex:none;width:74px}
+  .slider-row .pct{font-variant-numeric:tabular-nums;color:var(--spot);font-size:13px;width:40px;text-align:right;flex:none}
+  input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:4px;background:var(--line);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;
+    background:var(--spot);cursor:pointer;box-shadow:0 0 0 4px var(--spot-soft)}
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;border:none;border-radius:50%;background:var(--spot);cursor:pointer}
+  .btn-row{display:flex;gap:10px}
+  .btn-row button{flex:1;appearance:none;cursor:pointer;border-radius:12px;padding:12px;font-family:var(--sans);
+    font-size:14px;font-weight:500;background:var(--stage-3);border:1px solid var(--line);color:var(--ink)}
+  .btn-row button:active{transform:scale(.97)}
+  .btn-row button.on{background:var(--spot);color:#1a1305;border-color:var(--spot)}
+
+  @media (prefers-reduced-motion: reduce){
+    .lit{animation:none}
+    .iconbtn:active,.primary:active,.role-pick:active,.btn-row button:active{transform:none}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" title="Retour" style="display:none">&lsaquo;</button>
+    <h1 id="topTitle">Le Souffleur</h1>
+    <button class="iconbtn" id="topAction" title="Options" style="display:none"></button>
+    <button class="iconbtn" id="themeBtn" title="Changer de theme"></button>
+  </div>
+
+  <section class="view active" id="view-library">
+    <div class="eyebrow">Mes textes</div>
+    <div id="libList"></div>
+    <button class="primary block" id="newTextBtn">+ Nouveau texte</button>
+    <div class="backup-row">
+      <span>Sauvegarde locale :</span>
+      <button id="exportBtn">Exporter</button>
+      <span class="dot">&bull;</span>
+      <button id="importBtn">Importer</button>
+      <input type="file" id="importFile" accept="application/json,.json" style="display:none" />
+    </div>
+  </section>
+
+  <section class="view" id="view-editor">
+    <label class="field" for="ttl">Titre</label>
+    <input class="text" id="ttl" placeholder="Acte II, scene 3 - Mythios" autocomplete="off" />
+    <label class="field" for="body">Texte</label>
+    <textarea class="text" id="body" placeholder="MYTHIOS&#10;(tres fort)&#10;Je suis Mythios.&#10;&#10;CORSO&#10;On t'attendait."></textarea>
+    <div class="hint">
+      <b>Mise en forme</b> :<br>
+      &bull; Un <b>personnage</b> = son nom en MAJUSCULES, seul sur sa ligne.<br>
+      &bull; Une <b>didascalie</b> = du texte entre parentheses <code>(a voix basse)</code>. Affichee en italique, jamais a deviner.<br>
+      &bull; Le reste = les repliques.
+    </div>
+    <label class="field">Apercu</label>
+    <div class="legend">
+      <span class="l-char">Personnage</span>
+      <span class="l-dida">Didascalie</span>
+      <span class="l-line">Replique</span>
+    </div>
+    <div class="preview" id="preview"></div>
+    <button class="primary block" id="saveTextBtn">Continuer</button>
+  </section>
+
+  <section class="view" id="view-role">
+    <div class="lead">Qui jouez-vous ?</div>
+    <p class="lead-sub">Seules vos repliques seront a deviner. Les autres restent visibles comme repliques d'attente.</p>
+    <div class="roles" id="roleList"></div>
+  </section>
+
+  <section class="view" id="view-study">
+    <div class="script" id="script"></div>
+    <div class="console" id="console">
+      <div class="inner">
+        <div class="slider-row">
+          <label for="hideRange">Mots caches</label>
+          <input type="range" id="hideRange" min="0" max="100" step="5" value="80" />
+          <span class="pct" id="hidePctLabel">80%</span>
+        </div>
+        <div class="btn-row">
+          <button id="toggleAll">Tout reveler</button>
+          <button id="shuffle">Melanger</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+(function(){
+  const STORE_KEY = "souffleur_v1";
+
+  let library = [];
+  let current = null;
+  let blocks = [];
+  let thresholds = [];
+  let revealed = new Set();
+  let revealAll = false;
+  let editingId = null;
+  let activeView = "library";
+
+  const $ = function(id){ return document.getElementById(id); };
+  const views = {
+    library: $("view-library"), editor: $("view-editor"),
+    role: $("view-role"), study: $("view-study")
+  };
+
+  function show(name){
+    Object.keys(views).forEach(function(k){ views[k].classList.toggle("active", k===name); });
+    activeView = name;
+    const back = $("backBtn"), action = $("topAction");
+    if(name === "library"){
+      $("topTitle").textContent = "Le Souffleur";
+      back.style.display = "none"; action.style.display = "none";
+    } else if(name === "editor"){
+      $("topTitle").textContent = editingId ? "Modifier" : "Nouveau texte";
+      back.style.display = "grid"; action.style.display = "none";
+    } else if(name === "role"){
+      $("topTitle").textContent = current ? current.title : "Personnage";
+      back.style.display = "grid"; action.style.display = "none";
+    } else if(name === "study"){
+      $("topTitle").textContent = current ? current.title : "";
+      back.style.display = "grid";
+      action.style.display = "grid"; action.textContent = "\u2630"; action.title = "Changer de personnage";
+    }
+    window.scrollTo(0,0);
+  }
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  function loadLibrary(){
+    try{ library = JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+    catch(e){ library = []; }
+    if(!Array.isArray(library)) library = [];
+  }
+  function saveLibrary(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(library)); }
+    catch(e){ alert("Impossible d'enregistrer (stockage du navigateur plein ou bloque)."); }
+  }
+
+  function isAllCaps(s){
+    const letters = (s.match(/[\p{L}]/gu) || []);
+    if(letters.length === 0) return false;
+    return s.toLocaleUpperCase("fr") === s;
+  }
+  const HEADING_RE = /^(ACTE|SC[E\u00c8]NE|TABLEAU|PROLOGUE|[E\u00c9]PILOGUE)\b/i;
+  function cleanSpeaker(s){ return s.replace(/[\s:.,;]+$/u, "").trim(); }
+
+  function parse(raw){
+    const lines = (raw || "").replace(/\r\n?/g, "\n").split("\n");
+    const out = [];
+    let speaker = null;
+    for(let i=0;i<lines.length;i++){
+      const t = lines[i].trim();
+      if(t === ""){ out.push({type:"spacer"}); continue; }
+      if(/^\(.*\)$/u.test(t)){ out.push({type:"dida", text:t}); continue; }
+      if(isAllCaps(t) && HEADING_RE.test(t)){ out.push({type:"heading", text:t}); continue; }
+      const words = t.split(/\s+/).length;
+      const endsSentence = /[.!?\u2026]$/u.test(t);
+      if(isAllCaps(t) && words <= 4 && !endsSentence){
+        speaker = cleanSpeaker(t);
+        out.push({type:"speaker", name:speaker});
+        continue;
+      }
+      out.push({type:"line", speaker:speaker, text:t});
+    }
+    return out;
+  }
+  function detectCharacters(parsed){
+    const seen = [];
+    parsed.forEach(function(b){
+      if(b.type==="speaker" && b.name && seen.indexOf(b.name)===-1) seen.push(b.name);
+    });
+    return seen;
+  }
+  function splitParens(s){
+    const parts = s.split(/(\([^)]*\))/g);
+    const segs = [];
+    parts.forEach(function(p){
+      if(p === "") return;
+      if(/^\([^)]*\)$/.test(p)) segs.push({dida:true, text:p});
+      else segs.push({dida:false, text:p});
+    });
+    return segs;
+  }
+  function tokenize(s){
+    const raw = s.split(/(\s+)/);
+    const toks = [];
+    raw.forEach(function(w){
+      if(w === "") return;
+      if(/^\s+$/.test(w)){ toks.push({space:w}); return; }
+      const m = w.match(/^([^\p{L}\p{N}]*)([\p{L}\p{N}'\u2019\-]+)([^\p{L}\p{N}]*)$/u);
+      if(m) toks.push({pre:m[1], core:m[2], post:m[3]});
+      else toks.push({pre:w, core:"", post:""});
+    });
+    return toks;
+  }
+  function countBlankableWords(parsed, me){
+    let n = 0;
+    parsed.forEach(function(b){
+      if(b.type!=="line" || b.speaker!==me) return;
+      splitParens(b.text).forEach(function(seg){
+        if(seg.dida) return;
+        tokenize(seg.text).forEach(function(tok){ if(tok.core) n++; });
+      });
+    });
+    return n;
+  }
+
+  function renderLibrary(){
+    const list = $("libList");
+    list.innerHTML = "";
+    if(library.length === 0){
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.innerHTML = "<span class='big'>Le rideau est baisse</span>Ajoutez votre premier texte pour commencer a le travailler.";
+      list.appendChild(e);
+      return;
+    }
+    library.slice().reverse().forEach(function(t){
+      const card = document.createElement("div");
+      card.className = "card";
+      const sub = t.character
+        ? "Role : <span class='role'>"+esc(t.character)+"</span>"
+        : "Personnage a choisir";
+      card.innerHTML =
+        "<div class='meta'><div class='title'>"+esc(t.title||"Sans titre")+"</div>"+
+        "<div class='sub'>"+sub+"</div></div>"+
+        "<div class='card-actions'>"+
+          "<button class='ghostbtn' data-act='edit'>Modifier</button>"+
+          "<button class='ghostbtn danger' data-act='del'>Suppr.</button>"+
+        "</div><div class='chev'>&rsaquo;</div>";
+      card.querySelector(".meta").addEventListener("click", function(){ openText(t.id); });
+      card.querySelector(".chev").addEventListener("click", function(){ openText(t.id); });
+      card.querySelector("[data-act=edit]").addEventListener("click", function(e){ e.stopPropagation(); openEditor(t.id); });
+      card.querySelector("[data-act=del]").addEventListener("click", function(e){
+        e.stopPropagation();
+        if(confirm("Supprimer \u00ab "+(t.title||"Sans titre")+" \u00bb ?")){
+          library = library.filter(function(x){ return x.id!==t.id; });
+          saveLibrary(); renderLibrary();
+        }
+      });
+      list.appendChild(card);
+    });
+  }
+
+  function renderPreview(){
+    const raw = $("body").value;
+    const box = $("preview");
+    box.innerHTML = "";
+    const parsed = parse(raw);
+    const chars = detectCharacters(parsed);
+
+    const chips = document.createElement("div");
+    chips.className = "chips";
+    if(chars.length){
+      chars.forEach(function(c){
+        const s = document.createElement("span");
+        s.className = "chip"; s.textContent = c;
+        chips.appendChild(s);
+      });
+    } else {
+      const s = document.createElement("span");
+      s.className = "chip muted"; s.textContent = "Aucun personnage detecte";
+      chips.appendChild(s);
+    }
+    box.appendChild(chips);
+
+    if(raw.trim() === ""){
+      const e = document.createElement("div");
+      e.className = "preview-empty";
+      e.textContent = "L'apercu de votre texte s'affichera ici.";
+      box.appendChild(e);
+      return;
+    }
+
+    parsed.forEach(function(b){
+      if(b.type === "spacer"){ box.appendChild(el("div","spacer")); return; }
+      if(b.type === "heading"){ box.appendChild(el("div","heading", b.text)); return; }
+      if(b.type === "dida"){ box.appendChild(el("div","didascalie", b.text)); return; }
+      if(b.type === "speaker"){ box.appendChild(el("div","speaker", b.name)); return; }
+      if(b.type === "line"){
+        const d = el("div","line");
+        splitParens(b.text).forEach(function(seg){
+          if(seg.dida){
+            const sp = document.createElement("span");
+            sp.className = "inline-dida";
+            sp.textContent = " " + seg.text + " ";
+            d.appendChild(sp);
+          } else {
+            d.appendChild(document.createTextNode(seg.text));
+          }
+        });
+        box.appendChild(d);
+      }
+    });
+
+    function el(tag, cls, text){
+      const e = document.createElement(tag);
+      e.className = cls;
+      if(text != null) e.textContent = text;
+      return e;
+    }
+  }
+
+  function openEditor(id){
+    editingId = id || null;
+    const t = id ? library.find(function(x){return x.id===id;}) : null;
+    $("ttl").value = t ? (t.title||"") : "";
+    $("body").value = t ? (t.content||"") : "";
+    renderPreview();
+    show("editor");
+  }
+  function saveFromEditor(){
+    const title = $("ttl").value.trim() || "Sans titre";
+    const content = $("body").value;
+    if(content.trim() === ""){ alert("Collez d'abord votre texte."); return; }
+    if(editingId){
+      const t = library.find(function(x){return x.id===editingId;});
+      t.title = title; t.content = content;
+      const chars = detectCharacters(parse(content));
+      if(t.character && chars.indexOf(t.character)===-1) t.character = null;
+      current = t;
+    } else {
+      current = {id:"t"+Date.now()+Math.floor(Math.random()*1000),
+                 title:title, content:content, character:null, hidePct:80};
+      library.push(current);
+    }
+    saveLibrary();
+    editingId = null;
+    goToRoleOrStudy();
+  }
+
+  function openText(id){
+    current = library.find(function(x){return x.id===id;});
+    if(!current) return;
+    goToRoleOrStudy();
+  }
+  function goToRoleOrStudy(){
+    blocks = parse(current.content);
+    const chars = detectCharacters(blocks);
+    if(current.character && chars.indexOf(current.character)!==-1){ startStudy(); }
+    else { renderRoles(chars); show("role"); }
+  }
+
+  function renderRoles(chars){
+    const list = $("roleList");
+    list.innerHTML = "";
+    if(chars.length === 0){
+      list.innerHTML = "<p class='lead-sub'>Aucun personnage detecte. Verifiez que les noms sont en MAJUSCULES, seuls sur leur ligne, puis modifiez le texte.</p>";
+      return;
+    }
+    chars.forEach(function(name){
+      const n = blocks.filter(function(b){return b.type==="line" && b.speaker===name;}).length;
+      const b = document.createElement("button");
+      b.className = "role-pick" + (current.character===name ? " selected":"");
+      b.innerHTML = "<span>"+esc(name)+"</span><span class='count'>"+n+" replique"+(n>1?"s":"")+"</span>";
+      b.addEventListener("click", function(){ current.character = name; saveLibrary(); startStudy(); });
+      list.appendChild(b);
+    });
+  }
+
+  function freshThresholds(){
+    const n = countBlankableWords(blocks, current.character);
+    thresholds = new Array(n);
+    for(let i=0;i<n;i++) thresholds[i] = Math.random();
+  }
+  function startStudy(){
+    if(typeof current.hidePct !== "number") current.hidePct = 80;
+    revealed = new Set(); revealAll = false;
+    freshThresholds();
+    $("hideRange").value = current.hidePct;
+    $("hidePctLabel").textContent = current.hidePct + "%";
+    $("toggleAll").textContent = "Tout reveler";
+    $("toggleAll").classList.remove("on");
+    show("study");
+    renderScript();
+  }
+
+  function renderScript(){
+    const root = $("script");
+    root.innerHTML = "";
+    const pct = current.hidePct / 100;
+    let wi = -1;
+
+    function add(tag, cls, text){
+      const el = document.createElement(tag);
+      el.className = cls;
+      if(text != null) el.textContent = text;
+      root.appendChild(el);
+      return el;
+    }
+
+    blocks.forEach(function(b){
+      if(b.type === "spacer"){ add("div","spacer"); return; }
+      if(b.type === "heading"){ add("div","heading", b.text); return; }
+      if(b.type === "dida"){ add("div","didascalie", b.text); return; }
+      if(b.type === "speaker"){
+        const me = b.name === current.character;
+        add("div","speaker"+(me?" me":""), b.name);
+        return;
+      }
+      if(b.type === "line"){
+        const mine = b.speaker === current.character;
+        const div = document.createElement("div");
+        div.className = "line " + (mine ? "mine" : "cue");
+        splitParens(b.text).forEach(function(seg){
+          if(seg.dida){
+            const sp = document.createElement("span");
+            sp.className = "inline-dida";
+            sp.textContent = " " + seg.text + " ";
+            div.appendChild(sp);
+            return;
+          }
+          if(!mine){ div.appendChild(document.createTextNode(seg.text)); return; }
+          tokenize(seg.text).forEach(function(tok){
+            if(tok.space){ div.appendChild(document.createTextNode(tok.space)); return; }
+            if(!tok.core){ div.appendChild(document.createTextNode(tok.pre)); return; }
+            wi++;
+            const idx = wi;
+            if(tok.pre) div.appendChild(document.createTextNode(tok.pre));
+            const hiddenByPct = thresholds[idx] < pct;
+            const visible = revealAll || !hiddenByPct || revealed.has(idx);
+            if(visible){
+              const sp = document.createElement("span");
+              if(hiddenByPct) sp.className = "lit";
+              sp.textContent = tok.core;
+              div.appendChild(sp);
+            } else {
+              const sp = document.createElement("span");
+              sp.className = "blank";
+              sp.setAttribute("role","button");
+              sp.setAttribute("tabindex","0");
+              sp.setAttribute("aria-label","Reveler le mot");
+              sp.dataset.i = idx;
+              sp.dataset.word = tok.core;
+              sp.style.width = Math.max(1.4, tok.core.length*0.62) + "ch";
+              div.appendChild(sp);
+            }
+            if(tok.post) div.appendChild(document.createTextNode(tok.post));
+          });
+        });
+        root.appendChild(div);
+      }
+    });
+  }
+
+  function revealOne(span){
+    const idx = parseInt(span.dataset.i, 10);
+    revealed.add(idx);
+    const lit = document.createElement("span");
+    lit.className = "lit";
+    lit.textContent = span.dataset.word;
+    span.replaceWith(lit);
+  }
+
+  $("newTextBtn").addEventListener("click", function(){ openEditor(null); });
+
+  $("exportBtn").addEventListener("click", function(){
+    if(library.length === 0){ alert("Aucun texte a exporter pour le moment."); return; }
+    const payload = { app:"souffleur", version:1, exportedAt:new Date().toISOString(), texts:library };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const d = new Date();
+    const stamp = d.getFullYear() + "-" +
+      String(d.getMonth()+1).padStart(2,"0") + "-" +
+      String(d.getDate()).padStart(2,"0");
+    a.href = url;
+    a.download = "souffleur-sauvegarde-" + stamp + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  $("importBtn").addEventListener("click", function(){ $("importFile").click(); });
+  $("importFile").addEventListener("change", function(e){
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(){
+      try{
+        const parsed = JSON.parse(reader.result);
+        const incoming = Array.isArray(parsed) ? parsed
+                       : (parsed && Array.isArray(parsed.texts)) ? parsed.texts : null;
+        if(!incoming) throw new Error("format");
+        const valid = incoming.filter(function(t){
+          return t && typeof t.content === "string" && t.content.trim() !== "";
+        });
+        if(valid.length === 0){ alert("Aucun texte valide trouve dans ce fichier."); return; }
+        if(!confirm("Importer " + valid.length + " texte" + (valid.length>1?"s":"") +
+                    " ? Les textes portant le meme identifiant seront mis a jour, les autres ajoutes.")){ return; }
+        let added = 0, updated = 0;
+        valid.forEach(function(t){
+          const item = {
+            id: t.id || ("t"+Date.now()+Math.floor(Math.random()*1000)),
+            title: t.title || "Sans titre",
+            content: t.content,
+            character: t.character || null,
+            hidePct: typeof t.hidePct === "number" ? t.hidePct : 80
+          };
+          const idx = library.findIndex(function(x){ return x.id === item.id; });
+          if(idx >= 0){ library[idx] = item; updated++; }
+          else { library.push(item); added++; }
+        });
+        saveLibrary();
+        renderLibrary();
+        alert("Import termine : " + added + " ajoute(s), " + updated + " mis a jour.");
+      }catch(err){
+        alert("Fichier illisible. Selectionnez un fichier de sauvegarde exporte depuis cette application.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ""; // permet de reimporter le meme fichier ensuite
+  });
+  $("saveTextBtn").addEventListener("click", saveFromEditor);
+  $("body").addEventListener("input", renderPreview);
+
+  $("backBtn").addEventListener("click", function(){
+    editingId = null;
+    show("library"); renderLibrary();
+  });
+
+  $("topAction").addEventListener("click", function(){
+    if(activeView !== "study") return;
+    renderRoles(detectCharacters(blocks));
+    show("role");
+  });
+
+  $("script").addEventListener("click", function(e){
+    const b = e.target.closest(".blank");
+    if(b) revealOne(b);
+  });
+  $("script").addEventListener("keydown", function(e){
+    const b = e.target.closest(".blank");
+    if(b && (e.key==="Enter" || e.key===" ")){ e.preventDefault(); revealOne(b); }
+  });
+
+  $("hideRange").addEventListener("input", function(e){
+    current.hidePct = parseInt(e.target.value, 10);
+    $("hidePctLabel").textContent = current.hidePct + "%";
+    saveLibrary();
+    renderScript();
+  });
+
+  $("toggleAll").addEventListener("click", function(){
+    revealAll = !revealAll;
+    this.textContent = revealAll ? "Tout masquer" : "Tout reveler";
+    this.classList.toggle("on", revealAll);
+    renderScript();
+  });
+
+  $("shuffle").addEventListener("click", function(){
+    revealed = new Set(); revealAll = false;
+    $("toggleAll").textContent = "Tout reveler";
+    $("toggleAll").classList.remove("on");
+    freshThresholds();
+    renderScript();
+  });
+
+  /* ---------------- theme clair / sombre ---------------- */
+  const THEME_KEY = "souffleur_theme_v1";
+  function applyTheme(t){
+    const light = (t === "light");
+    document.documentElement.setAttribute("data-theme", light ? "light" : "dark");
+    $("themeBtn").textContent = light ? "\u263e" : "\u2600\uFE0E"; // lune si clair, soleil si sombre
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute("content", light ? "#f4f1e9" : "#0b0c10");
+  }
+  let theme = "dark";
+  try{ theme = localStorage.getItem(THEME_KEY) || "dark"; }catch(e){}
+  applyTheme(theme);
+  $("themeBtn").addEventListener("click", function(){
+    theme = (theme === "light") ? "dark" : "light";
+    applyTheme(theme);
+    try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+  });
+
+  loadLibrary();
+  renderLibrary();
+  show("library");
+})();
+</script>
+</body>
+</html>
