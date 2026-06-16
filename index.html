@@ -52,6 +52,11 @@
 
   .eyebrow{font-family:var(--sans);text-transform:uppercase;letter-spacing:.18em;
     font-size:11px;color:var(--ink-faint);margin:18px 2px 10px}
+  .lib-head{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 10px}
+  .lib-head .eyebrow{margin:0}
+  .sort-btn{appearance:none;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+    border-radius:999px;padding:5px 13px;font-size:12px;font-family:var(--sans);cursor:pointer;letter-spacing:.04em}
+  .sort-btn:active{transform:scale(.95)}
   .card{background:var(--stage-2);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;cursor:pointer}
   .card:active{border-color:var(--spot)}
@@ -196,7 +201,10 @@
   </section>
 
   <section class="view active" id="view-library">
-    <div class="eyebrow">Mes textes</div>
+    <div class="lib-head">
+      <span class="eyebrow">Mes textes</span>
+      <button class="sort-btn" id="sortBtn">A &rarr; Z</button>
+    </div>
     <div id="libList"></div>
     <button class="primary block" id="newTextBtn">+ Nouveau texte</button>
     <div class="account-row" id="accountRow" style="display:none">
@@ -263,8 +271,8 @@
   /* ===== CONFIGURATION SUPABASE =====
      Colle ici l'URL de ton projet et la cle "anon" (publique).
      Tant que ces deux champs sont vides, l'app fonctionne en local uniquement. */
-  const SUPABASE_URL = "https://rorewjhwjlayqiiygddg.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvcmV3amh3amxheXFpaXlnZGRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MDU0OTEsImV4cCI6MjA5NzE4MTQ5MX0.iWqgVDPKY_g-XuDcYAGmKf7-eKXuq3EhQ6FPS8m65-w";
+  const SUPABASE_URL = "";
+  const SUPABASE_ANON_KEY = "";
 
   const STORE_KEY = "souffleur_v1";
 
@@ -276,6 +284,8 @@
   let revealAll = false;
   let editingId = null;
   let activeView = "library";
+  let sortDir = "asc";
+  try{ sortDir = localStorage.getItem("souffleur_sort_v1") || "asc"; }catch(e){}
 
   let sb = null;            // client Supabase
   let cloudActive = false;  // true si connecte au cloud
@@ -402,7 +412,10 @@
       list.appendChild(e);
       return;
     }
-    library.slice().reverse().forEach(function(t){
+    const dir = (sortDir === "desc") ? -1 : 1;
+    library.slice().sort(function(a,b){
+      return dir * (a.title||"").localeCompare(b.title||"", "fr", {sensitivity:"base", numeric:true});
+    }).forEach(function(t){
       const card = document.createElement("div");
       card.className = "card";
       const sub = t.character
@@ -641,6 +654,17 @@
   }
 
   $("newTextBtn").addEventListener("click", function(){ openEditor(null); });
+
+  function updateSortLabel(){
+    $("sortBtn").textContent = (sortDir === "desc") ? "Z \u2192 A" : "A \u2192 Z";
+  }
+  updateSortLabel();
+  $("sortBtn").addEventListener("click", function(){
+    sortDir = (sortDir === "asc") ? "desc" : "asc";
+    try{ localStorage.setItem("souffleur_sort_v1", sortDir); }catch(e){}
+    updateSortLabel();
+    renderLibrary();
+  });
 
   $("exportBtn").addEventListener("click", function(){
     if(library.length === 0){ alert("Aucun texte a exporter pour le moment."); return; }
