@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --stage:#0b0c10; --stage-2:#121319; --stage-3:#1a1c24;
@@ -79,6 +80,15 @@
   .backup-row button{appearance:none;background:transparent;border:none;cursor:pointer;
     color:var(--spot);font-family:var(--sans);font-size:13px;padding:6px 4px;text-decoration:underline}
   .backup-row .dot{color:var(--ink-faint)}
+  .ghostbtn.wide{display:block;width:100%;text-align:center;padding:13px;margin-top:10px;
+    border-radius:var(--radius);font-size:15px;color:var(--ink);text-decoration:none}
+  .auth-error{color:var(--danger);font-size:13.5px;margin:12px 2px 0;min-height:1em}
+  .account-row{display:flex;align-items:center;justify-content:center;gap:10px;
+    margin-top:20px;font-size:13px;color:var(--ink-faint)}
+  .account-row b{color:var(--ink-dim);font-weight:500}
+  .account-row button{appearance:none;background:transparent;border:none;cursor:pointer;
+    color:var(--spot);font-family:var(--sans);font-size:13px;text-decoration:underline;padding:4px}
+  .sync-flag{font-size:12px;color:var(--ink-faint);margin-left:auto;font-style:italic}
 
   label.field{display:block;font-size:13px;color:var(--ink-faint);text-transform:uppercase;
     letter-spacing:.1em;margin:18px 2px 8px}
@@ -172,10 +182,27 @@
     <button class="iconbtn" id="themeBtn" title="Changer de theme"></button>
   </div>
 
+  <section class="view" id="view-auth">
+    <div class="lead">Connexion</div>
+    <p class="lead-sub">Connectez-vous pour retrouver vos textes sur tous vos appareils.</p>
+    <label class="field" for="authEmail">Identifiant (email)</label>
+    <input class="text" id="authEmail" type="email" autocomplete="username" placeholder="vous@exemple.com" />
+    <label class="field" for="authPass">Mot de passe</label>
+    <input class="text" id="authPass" type="password" autocomplete="current-password" placeholder="........" />
+    <div class="auth-error" id="authError"></div>
+    <button class="primary block" id="loginBtn">Se connecter</button>
+    <button class="ghostbtn wide" id="signupBtn">Creer un compte</button>
+    <div class="backup-row"><button id="localBtn">Continuer sans compte (local)</button></div>
+  </section>
+
   <section class="view active" id="view-library">
     <div class="eyebrow">Mes textes</div>
     <div id="libList"></div>
     <button class="primary block" id="newTextBtn">+ Nouveau texte</button>
+    <div class="account-row" id="accountRow" style="display:none">
+      <span>Connecte : <b id="accountEmail"></b></span>
+      <button id="logoutBtn">Deconnexion</button>
+    </div>
     <div class="backup-row">
       <span>Sauvegarde locale :</span>
       <button id="exportBtn">Exporter</button>
@@ -233,6 +260,12 @@
 <script>
 "use strict";
 (function(){
+  /* ===== CONFIGURATION SUPABASE =====
+     Colle ici l'URL de ton projet et la cle "anon" (publique).
+     Tant que ces deux champs sont vides, l'app fonctionne en local uniquement. */
+  const SUPABASE_URL = "https://rorewjhwjlayqiiygddg.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvcmV3amh3amxheXFpaXlnZGRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MDU0OTEsImV4cCI6MjA5NzE4MTQ5MX0.iWqgVDPKY_g-XuDcYAGmKf7-eKXuq3EhQ6FPS8m65-w";
+
   const STORE_KEY = "souffleur_v1";
 
   let library = [];
@@ -244,9 +277,14 @@
   let editingId = null;
   let activeView = "library";
 
+  let sb = null;            // client Supabase
+  let cloudActive = false;  // true si connecte au cloud
+  let currentUser = null;   // utilisateur connecte
+  let syncTimer = null;     // anti-rebond pour le curseur
+
   const $ = function(id){ return document.getElementById(id); };
   const views = {
-    library: $("view-library"), editor: $("view-editor"),
+    auth: $("view-auth"), library: $("view-library"), editor: $("view-editor"),
     role: $("view-role"), study: $("view-study")
   };
 
@@ -254,7 +292,10 @@
     Object.keys(views).forEach(function(k){ views[k].classList.toggle("active", k===name); });
     activeView = name;
     const back = $("backBtn"), action = $("topAction");
-    if(name === "library"){
+    if(name === "auth"){
+      $("topTitle").textContent = "Le Souffleur";
+      back.style.display = "none"; action.style.display = "none";
+    } else if(name === "library"){
       $("topTitle").textContent = "Le Souffleur";
       back.style.display = "none"; action.style.display = "none";
     } else if(name === "editor"){
@@ -381,7 +422,7 @@
         e.stopPropagation();
         if(confirm("Supprimer \u00ab "+(t.title||"Sans titre")+" \u00bb ?")){
           library = library.filter(function(x){ return x.id!==t.id; });
-          saveLibrary(); renderLibrary();
+          saveLibrary(); deleteRemote(t.id); renderLibrary();
         }
       });
       list.appendChild(card);
@@ -471,6 +512,7 @@
       library.push(current);
     }
     saveLibrary();
+    upsertRemote(current);
     editingId = null;
     goToRoleOrStudy();
   }
@@ -499,7 +541,7 @@
       const b = document.createElement("button");
       b.className = "role-pick" + (current.character===name ? " selected":"");
       b.innerHTML = "<span>"+esc(name)+"</span><span class='count'>"+n+" replique"+(n>1?"s":"")+"</span>";
-      b.addEventListener("click", function(){ current.character = name; saveLibrary(); startStudy(); });
+      b.addEventListener("click", function(){ current.character = name; saveLibrary(); upsertRemote(current); startStudy(); });
       list.appendChild(b);
     });
   }
@@ -650,6 +692,7 @@
         });
         saveLibrary();
         renderLibrary();
+        if(cloudActive){ library.forEach(function(t){ upsertRemote(t); }); }
         alert("Import termine : " + added + " ajoute(s), " + updated + " mis a jour.");
       }catch(err){
         alert("Fichier illisible. Selectionnez un fichier de sauvegarde exporte depuis cette application.");
@@ -686,6 +729,11 @@
     $("hidePctLabel").textContent = current.hidePct + "%";
     saveLibrary();
     renderScript();
+    if(cloudActive){
+      clearTimeout(syncTimer);
+      const snap = current;
+      syncTimer = setTimeout(function(){ upsertRemote(snap); }, 800);
+    }
   });
 
   $("toggleAll").addEventListener("click", function(){
@@ -703,12 +751,90 @@
     renderScript();
   });
 
+  /* ---------------- cloud : Supabase ---------------- */
+  function readLocalCache(){
+    try{ const a = JSON.parse(localStorage.getItem(STORE_KEY)); return Array.isArray(a) ? a : []; }
+    catch(e){ return []; }
+  }
+  function rowFromText(t){
+    return {
+      id: t.id, user_id: currentUser ? currentUser.id : null,
+      title: t.title || "Sans titre", content: t.content,
+      character: t.character || null,
+      hide_pct: typeof t.hidePct === "number" ? t.hidePct : 80,
+      updated_at: new Date().toISOString()
+    };
+  }
+  function textFromRow(r){
+    return { id:r.id, title:r.title, content:r.content,
+             character:r.character, hidePct: (typeof r.hide_pct==="number"? r.hide_pct : 80) };
+  }
+  async function upsertRemote(t){
+    if(!cloudActive || !sb || !currentUser || !t) return;
+    try{ await sb.from("texts").upsert(rowFromText(t)); }
+    catch(e){ console.warn("Sync (ecriture) impossible :", e && e.message); }
+  }
+  async function deleteRemote(id){
+    if(!cloudActive || !sb || !currentUser) return;
+    try{ await sb.from("texts").delete().eq("id", id); }
+    catch(e){ console.warn("Sync (suppression) impossible :", e && e.message); }
+  }
+  async function fetchRemote(){
+    const res = await sb.from("texts").select("*").order("updated_at", {ascending:true});
+    if(res.error) throw res.error;
+    return (res.data || []).map(textFromRow);
+  }
+
+  function updateAccountUI(){
+    const row = $("accountRow");
+    if(cloudActive && currentUser){
+      row.style.display = "flex";
+      $("accountEmail").textContent = currentUser.email || "";
+    } else {
+      row.style.display = "none";
+    }
+  }
+
+  async function onLogin(user){
+    if(currentUser && currentUser.id === user.id && cloudActive) return;
+    currentUser = user; cloudActive = true;
+    try{
+      let remote = await fetchRemote();
+      if(remote.length === 0){
+        const local = readLocalCache();
+        if(local.length){ for(let i=0;i<local.length;i++){ await upsertRemote(local[i]); } remote = local; }
+      }
+      library = remote;
+      saveLibrary();
+      updateAccountUI();
+      renderLibrary();
+      show("library");
+    }catch(e){
+      cloudActive = false; currentUser = null;
+      $("authError").textContent = "Connexion reussie mais lecture impossible. Avez-vous cree la table et les regles RLS ? (" + (e && e.message ? e.message : "erreur") + ")";
+      show("auth");
+    }
+  }
+  function onLogout(){
+    cloudActive = false; currentUser = null;
+    library = [];
+    updateAccountUI();
+    show("auth");
+  }
+  function localMode(){
+    cloudActive = false; currentUser = null;
+    loadLibrary();
+    updateAccountUI();
+    renderLibrary();
+    show("library");
+  }
+
   /* ---------------- theme clair / sombre ---------------- */
   const THEME_KEY = "souffleur_theme_v1";
   function applyTheme(t){
     const light = (t === "light");
     document.documentElement.setAttribute("data-theme", light ? "light" : "dark");
-    $("themeBtn").textContent = light ? "\u263e" : "\u2600\uFE0E"; // lune si clair, soleil si sombre
+    $("themeBtn").textContent = light ? "\u263e" : "\u2600\uFE0E";
     const meta = document.querySelector('meta[name="theme-color"]');
     if(meta) meta.setAttribute("content", light ? "#f4f1e9" : "#0b0c10");
   }
@@ -721,9 +847,57 @@
     try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
   });
 
-  loadLibrary();
-  renderLibrary();
-  show("library");
+  /* ---------------- evenements connexion ---------------- */
+  function readCreds(){
+    return { email: $("authEmail").value.trim(), password: $("authPass").value };
+  }
+  $("loginBtn").addEventListener("click", async function(){
+    $("authError").textContent = "";
+    const c = readCreds();
+    if(!c.email || !c.password){ $("authError").textContent = "Renseignez l'email et le mot de passe."; return; }
+    this.disabled = true; this.textContent = "Connexion...";
+    try{
+      const res = await sb.auth.signInWithPassword(c);
+      if(res.error) $("authError").textContent = traduireErreur(res.error.message);
+    }catch(e){ $("authError").textContent = "Erreur reseau."; }
+    this.disabled = false; this.textContent = "Se connecter";
+  });
+  $("signupBtn").addEventListener("click", async function(){
+    $("authError").textContent = "";
+    const c = readCreds();
+    if(!c.email || c.password.length < 6){ $("authError").textContent = "Email requis et mot de passe d'au moins 6 caracteres."; return; }
+    this.disabled = true; this.textContent = "Creation...";
+    try{
+      const res = await sb.auth.signUp(c);
+      if(res.error){ $("authError").textContent = traduireErreur(res.error.message); }
+      else if(!res.data.session){ $("authError").textContent = "Compte cree. Confirmez l'email recu, puis connectez-vous."; }
+    }catch(e){ $("authError").textContent = "Erreur reseau."; }
+    this.disabled = false; this.textContent = "Creer un compte";
+  });
+  $("logoutBtn").addEventListener("click", async function(){
+    try{ await sb.auth.signOut(); }catch(e){}
+  });
+  $("localBtn").addEventListener("click", function(){ localMode(); });
+
+  function traduireErreur(m){
+    if(!m) return "Erreur.";
+    if(/Invalid login credentials/i.test(m)) return "Identifiant ou mot de passe incorrect.";
+    if(/already registered/i.test(m)) return "Cet email a deja un compte. Connectez-vous.";
+    if(/Email not confirmed/i.test(m)) return "Email non confirme. Verifiez votre boite mail.";
+    return m;
+  }
+
+  /* ---------------- demarrage ---------------- */
+  if(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase){
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    show("auth");
+    sb.auth.onAuthStateChange(function(_event, session){
+      if(session && session.user){ onLogin(session.user); }
+      else { onLogout(); }
+    });
+  } else {
+    localMode();
+  }
 })();
 </script>
 </body>
