@@ -12,5 +12,5 @@
 // pas du secret de cette cle. La mettre dans ce fichier est donc sans danger.
 // (Ne mets JAMAIS la cle "service_role" ici.)
 
-window.SUPABASE_URL = "https://xxxx.supabase.co";
-window.SUPABASE_ANON_KEY = "ta_cle_anon_public";
+window.SUPABASE_URL = "https://rorewjhwjlayqiiygddg.supabase.co";
+window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvcmV3amh3amxheXFpaXlnZGRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MDU0OTEsImV4cCI6MjA5NzE4MTQ5MX0.iWqgVDPKY_g-XuDcYAGmKf7-eKXuq3EhQ6FPS8m65-w";
