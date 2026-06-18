@@ -241,6 +241,7 @@
     </div>
     <div class="preview" id="preview"></div>
     <button class="primary block" id="saveTextBtn">Continuer</button>
+    <button class="ghostbtn wide" id="cancelTextBtn">Annuler</button>
   </section>
 
   <section class="view" id="view-role">
@@ -278,6 +279,7 @@
   const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "";
 
   const STORE_KEY = "souffleur_v1";
+  const DRAFT_KEY = "souffleur_draft_v1";
 
   let library = [];
   let current = null;
@@ -530,8 +532,45 @@
     }
     saveLibrary();
     upsertRemote(current);
+    clearDraft();
     editingId = null;
     goToRoleOrStudy();
+  }
+
+  /* ---------------- brouillon (anti-perte) ----------------
+     Le contenu de l'editeur est sauvegarde a chaque frappe dans un
+     brouillon separe. Apres un rafraichissement accidentel, il est
+     restaure automatiquement. Il n'est efface que par "Continuer"
+     (enregistre dans la bibliotheque) ou "Annuler". */
+  function saveDraft(){
+    try{
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        editingId: editingId,
+        title: $("ttl").value,
+        content: $("body").value
+      }));
+    }catch(e){}
+  }
+  function clearDraft(){
+    try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+  }
+  function loadDraft(){
+    try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)); }catch(e){ return null; }
+  }
+  function cancelEditor(){
+    clearDraft();
+    editingId = null;
+    show("library"); renderLibrary();
+  }
+  function restoreDraftIfAny(){
+    const d = loadDraft();
+    if(!d) return;
+    if((d.title||"").trim()==="" && (d.content||"").trim()===""){ clearDraft(); return; }
+    editingId = (d.editingId && library.find(function(x){return x.id===d.editingId;})) ? d.editingId : null;
+    $("ttl").value = d.title || "";
+    $("body").value = d.content || "";
+    renderPreview();
+    show("editor");
   }
 
   function openText(id){
@@ -730,9 +769,12 @@
     e.target.value = ""; // permet de reimporter le meme fichier ensuite
   });
   $("saveTextBtn").addEventListener("click", saveFromEditor);
-  $("body").addEventListener("input", renderPreview);
+  $("cancelTextBtn").addEventListener("click", cancelEditor);
+  $("body").addEventListener("input", function(){ renderPreview(); saveDraft(); });
+  $("ttl").addEventListener("input", saveDraft);
 
   $("backBtn").addEventListener("click", function(){
+    if(activeView === "editor"){ cancelEditor(); return; }
     editingId = null;
     show("library"); renderLibrary();
   });
@@ -841,6 +883,7 @@
       updateAccountUI();
       renderLibrary();
       show("library");
+      restoreDraftIfAny();
     }catch(e){
       cloudActive = false; currentUser = null;
       $("authError").textContent = "Connexion reussie mais lecture impossible. Avez-vous cree la table et les regles RLS ? (" + (e && e.message ? e.message : "erreur") + ")";
@@ -859,6 +902,7 @@
     updateAccountUI();
     renderLibrary();
     show("library");
+    restoreDraftIfAny();
   }
 
   /* ---------------- theme clair / sombre ---------------- */
