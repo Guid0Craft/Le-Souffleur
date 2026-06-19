@@ -184,6 +184,7 @@
   <div class="topbar">
     <button class="iconbtn" id="backBtn" title="Retour" style="display:none">&lsaquo;</button>
     <h1 id="topTitle">Le Souffleur</h1>
+    <button class="iconbtn" id="saveAction" title="Enregistrer" style="display:none">&#128190;</button>
     <button class="iconbtn" id="editAction" title="Modifier le texte" style="display:none">&#9998;</button>
     <button class="iconbtn" id="topAction" title="Options" style="display:none"></button>
     <button class="iconbtn" id="themeBtn" title="Changer de theme"></button>
@@ -306,8 +307,9 @@
   function show(name){
     Object.keys(views).forEach(function(k){ views[k].classList.toggle("active", k===name); });
     activeView = name;
-    const back = $("backBtn"), action = $("topAction"), edit = $("editAction");
+    const back = $("backBtn"), action = $("topAction"), edit = $("editAction"), save = $("saveAction");
     edit.style.display = (name === "study") ? "grid" : "none";
+    save.style.display = (name === "editor") ? "grid" : "none";
     if(name === "auth"){
       $("topTitle").textContent = "Le Souffleur";
       back.style.display = "none"; action.style.display = "none";
@@ -787,6 +789,10 @@
 
   $("editAction").addEventListener("click", function(){
     if(current) openEditor(current.id);
+  });
+
+  $("saveAction").addEventListener("click", function(){
+    if(activeView === "editor") saveFromEditor();
   });
 
   $("script").addEventListener("click", function(e){
