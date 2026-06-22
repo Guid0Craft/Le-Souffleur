@@ -2,15 +2,12 @@
 
 A web app for memorizing theater scripts. Paste a script, pick the character you play, and the app hides a tunable percentage of the words in **your** lines behind tappable blanks. Tap a blank to reveal the word.
 
-The interface is available in **French and English** — switch anytime with the language button in the top bar.
-
 ## Features
 
 - Adjustable hiding (percentage slider)
 - Tap a blank to reveal the word
 - "Shuffle" to redraw which words are hidden
 - Light / dark theme
-- French / English interface
 - Local save + optional cloud sync
 
 ## Running it
